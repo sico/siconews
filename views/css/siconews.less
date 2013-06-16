@@ -11,6 +11,8 @@ body {
 .h2 {
   font-family: Georgia, serif;
   font-size: 1.2em;
+  margin: 0;
+  margin-bottom: 5px;
 }
 
 .wrap {
@@ -27,4 +29,47 @@ body {
 .sidebar {
   float: left;
   width: 31.875%; /* 306px / 960px */
+
+  .thumbnail {
+    width: 50%;
+    float: left;
+    padding: 10px;
+  }
+
+  .h1 {
+    font-size: 1em;
+    margin: 0;
+  }
+
+  p {
+    font-size: .8em;
+  }
+
+}
+
+.more-stories {
+  .thumbnail {
+    width: 30%;
+    float: left;
+    padding: 10px 10px 0 0;
+  }
+
+  .h1 {
+    font-size: 1.3em;
+    margin: 0;
+  }
+}
+
+@media screen and (max-width: 800px) {
+  .sidebar,
+  .main {
+    float: none;
+    width: auto;
+  }
+
+  .sidebar {
+    .thumbnail {
+      width: 30%;
+    }
+  }
 }
