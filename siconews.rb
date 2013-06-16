@@ -1,19 +1,65 @@
 require 'rubygems'
 require 'sinatra'
-require 'ohm'
+require 'redis'
 require 'json'
 require 'net/http'
 require 'uri'
 require 'less'
 
 
-class Article < Ohm::Model
-  attribute :title
-  attribute :photo_url
-  attribute :text
+# REDIS KEYS
+#
+# global:nextArticleId - integer
+# article:<articleid> - hash { title, photo_url, text, created_at }
+# articles:all - list<integer>
 
-  def to_json
-    { :title => self.title, :photo_url => self.photo_url, :text => self.text }
+class Article
+  @@redis = @@redis ||= Redis.new
+  def initialize(title, photo_url, text)
+    @title = title
+    @photo_url = photo_url
+    @text = text
+    @created_at = Time.now
+  end
+
+
+  def self.get_list(limit, offset = 0, options = {})
+    #fetch valid ids
+    id_list = @@redis.lrange("articles:all", offset, offset.to_i + limit.to_i - 1 )
+    articles_list = []
+    #pipeline fetch of multiple article futures to prevent network delays
+    res = @@redis.pipelined do
+      id_list.each do |id|
+        articles_list << @@redis.hgetall("article:#{id}")
+      end
+    end
+    #map the futures to Articles
+    articles_list.map! do |article|
+      Article.new(article.value["title"], article.value["photo_url"], article.value["text"])
+    end
+
+    if options[:format] == 'json'
+      articles_list.to_json
+    else
+      articles_list
+    end
+  end
+
+  def save!
+    #get new ID
+    article_id = @@redis.incr('global:nextArticleId')
+    #save article w new ID as hash (would json string be better since we always access all keys for article?)
+    @@redis.mapped_hmset("article:#{article_id}", self.to_a)
+    #add article to list
+    @@redis.lpush("articles:all", article_id)
+  end
+
+  def to_a
+    { :title => @title, :photo_url => @photo_url, :text => @text, :created_at => @created_at }
+  end
+
+  def to_json(options)
+    { "title" => @title, "photo_url" => @photo_url, "text" => @text }.to_json
   end
 end
 
@@ -28,13 +74,11 @@ class Siconews < Sinatra::Application
   end
 
   get '/articles/:limit' do
-    articles_json_list = find_articles(params[:limit])
-    articles_json_list.to_json
+    articles_json_list = Article.get_list(params[:limit], nil, {:format => 'json'})
   end
 
   get '/articles/:limit/:offset' do
-    articles_json_list = find_articles(params[:limit], params[:offset])
-    articles_json_list.to_json
+    articles_json_list = Article.get_list(params[:limit], params[:offset], {:format => 'json'})
   end
 
   #mock some initial data
@@ -43,13 +87,13 @@ class Siconews < Sinatra::Application
     data = fetch_data
 
     data['stories'].each do |story|
-      article = Article.create(
-        :title => story['title'],
-        :photo_url => 'http://placekitten.com/g/200/300',
-        :text => "#{story['description']} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec rutrum ut massa non iaculis. Integer ac augue a dolor aliquam sollicitudin. Nulla ut orci id mi ullamcorper posuere. Nullam eget ultrices mi. Ut tempus, risus vel malesuada porta, felis quam consectetur eros, vitae tempus est ante ut ipsum. Nulla et felis quis quam ultricies dignissim sed in magna. Pellentesque condimentum rutrum nulla quis bibendum. Duis blandit consequat mi sed interdum. Cras vestibulum scelerisque nibh. Maecenas dignissim massa vel tempor feugiat. Nam ligula felis, ultrices ut tempor vel, aliquam ac est. Curabitur sagittis est molestie elit egestas dictum quis ac mauris. Nulla luctus commodo tincidunt. Ut dignissim fermentum elit at congue.
+      article = Article.new(
+        story['title'],
+        'http://placekitten.com/g/200/300',
+        "#{story['description']} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec rutrum ut massa non iaculis. Integer ac augue a dolor aliquam sollicitudin. Nulla ut orci id mi ullamcorper posuere. Nullam eget ultrices mi. Ut tempus, risus vel malesuada porta, felis quam consectetur eros, vitae tempus est ante ut ipsum. Nulla et felis quis quam ultricies dignissim sed in magna. Pellentesque condimentum rutrum nulla quis bibendum. Duis blandit consequat mi sed interdum. Cras vestibulum scelerisque nibh. Maecenas dignissim massa vel tempor feugiat. Nam ligula felis, ultrices ut tempor vel, aliquam ac est. Curabitur sagittis est molestie elit egestas dictum quis ac mauris. Nulla luctus commodo tincidunt. Ut dignissim fermentum elit at congue.
                   Nulla quis nunc purus. Integer varius porttitor placerat. Quisque pretium lectus nulla, vel mollis nulla sodales eget. Ut consectetur, leo eu posuere faucibus, augue ante placerat quam, fringilla tincidunt magna arcu vel velit. Aliquam erat volutpat. Vivamus id vehicula erat. Nunc vitae elit felis. Quisque malesuada interdum quam eget ullamcorper. Nulla tincidunt tincidunt libero, eget adipiscing metus porttitor vel. In non elit porta, tempus lectus eget, varius nisi. Quisque consequat, arcu ut suscipit aliquam, eros lorem mollis libero, eget elementum libero libero aliquet est. Ut pretium pellentesque condimentum. Mauris rhoncus, mauris id tristique imperdiet, mauris sem sagittis diam, sit amet dapibus neque odio quis arcu."
         )
-      article.save
+      article.save!
     end
 
     "data made!"
@@ -68,7 +112,7 @@ class Siconews < Sinatra::Application
 
   def fetch_data
 
-    uri = URI.parse("http://api.usatoday.com/open/articles/topnews?api_key=#{ENV['TWITTER_CONSUMER_KEY']}&count=30&encoding=json")
+    uri = URI.parse("http://api.usatoday.com/open/articles/topnews?api_key=#{ENV['USA_TODAY_KEY']}&count=30&encoding=json")
     http = Net::HTTP.new(uri.host, uri.port)
     request = Net::HTTP::Get.new(uri.request_uri)
 
