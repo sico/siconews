@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Some Kind of News!</title>
+  <link rel="stylesheet" type="text/css" href="/css/siconews.css">
+</head>
+
+<body>
+
+<div class="wrap">
+  <header class="header">
+    <h1 class="h1"><a href="/">A Ledger or Chronicle</a></h1>
+  </header>
+   <%= yield %>
+</div>
+<footer class="footer">
+
+</footer>
+
+</body>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/knockout/knockout-2.2.1.js" type="text/javascript"></script>
+<script src="/js/news.js" type="text/javascript"></script>
+<script>
+  SN.viewModels.init();
+</script>
+</html>

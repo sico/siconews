@@ -1,0 +1,31 @@
+<section class="sidebar" id="celebrity-news">
+  <h2 class="h2">Celebrity News or Something</h2>
+  <section class="articles-inner" data-bind="foreach: celebs">
+    <article>
+      <h1 class="h1" data-bind="text: title"></h1>
+      <img data-bind="attr: { src: photo_url }" />
+      <p data-bind="text: text"></p>
+    </article>
+  </section>
+</section>
+
+<section class="main">
+  <section class="top-story-wrap" id="top-story">
+    <article class="top-story">
+      <h1 class="h1" data-bind="text: topStory().title"></h1>
+      <img data-bind="attr: { src: topStory().photo_url }" />
+      <p data-bind="text: topStory().text"></p>
+    </article>
+  </section>
+
+  <section class="more-stories" id="more-stories">
+    <h3>More Stories</h3>
+    <section class="articles-inner" data-bind="foreach: moreStories">
+      <article>
+        <h1 class="h1" data-bind="text: title"></h1>
+        <img data-bind="attr: { src: photo_url }" />
+        <p data-bind="text: text"></p>
+      </article>
+    </section>
+  </section>
+</section>
