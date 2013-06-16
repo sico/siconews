@@ -68,7 +68,7 @@ class Siconews < Sinatra::Application
 
   def fetch_data
 
-    uri = URI.parse("http://api.usatoday.com/open/articles/topnews?api_key=xekehgwbktj33vpssutmb9y2&count=30&encoding=json")
+    uri = URI.parse("http://api.usatoday.com/open/articles/topnews?api_key=#{ENV['TWITTER_CONSUMER_KEY']}&count=30&encoding=json")
     http = Net::HTTP.new(uri.host, uri.port)
     request = Net::HTTP::Get.new(uri.request_uri)
 
